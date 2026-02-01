@@ -28,7 +28,7 @@ game: "sse"
 scripts: "C:/Games/Steam/steamapps/common/Skyrim Special Edition/Data/scripts/source"
 compiler: "C:/path/to/your/papyrus-compiler.exe"
 
-# For macOS  
+# For macOS
 game: "sse"
 scripts: "/path/to/Skyrim/Data/scripts/source"
 compiler: "/path/to/your/papyrus-compiler-macos"
@@ -61,15 +61,16 @@ dependencies:
 
 ### Configuration Options
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `name` | Yes | Your mod name |
-| `game` | No | Game version (`sse` for Skyrim Special Edition) |
-| `scripts` | Yes | Path to base game scripts for imports |
-| `sourceDir` | No | Where your .psc files are (default: `./src/scripts/source`) |
-| `outputDir` | No | Where .pex files go (default: `./src/scripts`) |
-| `dependencies` | No | Map of dependency names to paths |
-| `compiler` | No | Custom compiler path (default: bundled compiler) |
+| Option         | Required | Description                                                 |
+| -------------- | -------- | ----------------------------------------------------------- |
+| `name`         | Yes      | Your mod name                                               |
+| `game`         | No       | Game version (`sse` for Skyrim Special Edition)             |
+| `mods`         | No       | The path to your mods folder                                |
+| `scripts`      | Yes      | Path to base game scripts for imports                       |
+| `sourceDir`    | No       | Where your .psc files are (default: `./src/scripts/source`) |
+| `outputDir`    | No       | Where .pex files go (default: `./src/scripts`)              |
+| `dependencies` | No       | Map of dependency names to paths                            |
+| `compiler`     | No       | Custom compiler path (default: bundled compiler)            |
 
 ## Commands
 
@@ -102,6 +103,7 @@ Dependencies are added as `-h` flags to the compiler, allowing your scripts to i
 - `{name}` - Your mod name from config
 
 Example:
+
 ```yaml
 dependencies:
   skse: "{mods}/SKSE/Scripts/Source"
@@ -111,18 +113,22 @@ dependencies:
 ## Keyboard Shortcuts
 
 The tasks are registered as build tasks, so you can use:
+
 - `Ctrl+Shift+B` (or `Cmd+Shift+B`) to run build tasks
 - Select from the available Papyrus compile options
 
 ## Troubleshooting
 
 ### "No project.yaml found in workspace root"
+
 Make sure you have a `project.yaml` file in the root of your workspace.
 
 ### "Invalid path specified for the -h flag"
+
 Check that your `scripts` path points to a valid directory containing .psc files.
 
 ### Files not appearing in outputDir
+
 Ensure the `outputDir` directory exists or can be created. The extension will create it if it doesn't exist.
 
 ## License
