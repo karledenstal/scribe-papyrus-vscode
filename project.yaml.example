@@ -1,0 +1,23 @@
+# Scribe Papyrus Project Configuration
+# Place this file in your workspace root directory
+
+name: "My Awesome Mod"
+mods: "/path/to/mods/folder"
+game: "sse"
+scripts: "/path/to/Data/Scripts/Source"
+
+# Path to the papyrus compiler executable
+# Default: "./bin/papyrus" (bundled with extension)
+# Can also be an absolute path or use placeholders
+compiler: "./bin/papyrus"
+
+# Define your dependencies here
+# Use {mods}, {scripts}, {game}, or {name} as placeholders
+dependencies:
+  skse: "{mods}/skse/scripts/source"
+  skyui: "{mods}/skyui/scripts/source"
+  papyrusutil: "{mods}/PapyrusUtil/scripts/source"
+
+# Optional: customize source and output directories (relative to workspace root)
+sourceDir: "./src/scripts/source"
+outputDir: "./src/scripts"
