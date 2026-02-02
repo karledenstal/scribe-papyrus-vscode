@@ -10,9 +10,18 @@ interface PapyrusSymbol {
     documentation?: string;
 }
 
+interface ScriptInfo {
+    name: string;
+    extends?: string;
+    functions: PapyrusSymbol[];
+    events: PapyrusSymbol[];
+    properties: PapyrusSymbol[];
+}
+
 export class PapyrusCompletionProvider implements vscode.CompletionItemProvider {
     private symbols: Map<string, PapyrusSymbol[]> = new Map();
     private cache: Map<string, { mtime: number; symbols: PapyrusSymbol[] }> = new Map();
+    private scripts: Map<string, ScriptInfo> = new Map();
     private config: ProjectConfig | null = null;
     private isIndexing: boolean = false;
 
@@ -92,7 +101,7 @@ export class PapyrusCompletionProvider implements vscode.CompletionItemProvider 
             }
             
             const content = fs.readFileSync(filePath, 'utf-8');
-            const symbols = this.parseSymbols(content, path.basename(filePath, '.psc'));
+            const { symbols, scriptInfo } = this.parseSymbols(content, path.basename(filePath, '.psc'));
             
             this.cache.set(filePath, {
                 mtime: stats.mtime.getTime(),
@@ -101,27 +110,37 @@ export class PapyrusCompletionProvider implements vscode.CompletionItemProvider 
             
             // Store symbols by file
             this.symbols.set(filePath, symbols);
+            
+            // Store script info with inheritance
+            if (scriptInfo) {
+                this.scripts.set(scriptInfo.name.toLowerCase(), scriptInfo);
+            }
         } catch (error) {
             console.error(`[Papyrus] Error indexing file ${filePath}:`, error);
         }
     }
 
-    private parseSymbols(content: string, defaultScriptName: string): PapyrusSymbol[] {
+    private parseSymbols(content: string, defaultScriptName: string): { symbols: PapyrusSymbol[]; scriptInfo?: ScriptInfo } {
         const symbols: PapyrusSymbol[] = [];
         const lines = content.split('\n');
         let currentScriptName = defaultScriptName;
+        let extendsName: string | undefined;
+        const functions: PapyrusSymbol[] = [];
+        const events: PapyrusSymbol[] = [];
+        const properties: PapyrusSymbol[] = [];
         
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             
-            // ScriptName declaration
-            const scriptMatch = line.match(/^\s*ScriptName\s+(\w+)/i);
+            // ScriptName declaration with optional extends
+            const scriptMatch = line.match(/^\s*ScriptName\s+(\w+)(?:\s+extends\s+(\w+))?/i);
             if (scriptMatch) {
                 currentScriptName = scriptMatch[1];
+                extendsName = scriptMatch[2];
                 symbols.push({
                     name: currentScriptName,
                     type: 'script',
-                    detail: 'Script',
+                    detail: extendsName ? `Script (extends ${extendsName})` : 'Script',
                     documentation: this.extractDocumentation(lines, i)
                 });
                 continue;
@@ -131,12 +150,14 @@ export class PapyrusCompletionProvider implements vscode.CompletionItemProvider 
             const funcMatch = line.match(/^\s*(?:\w+\s+)?Function\s+(\w+)\s*\(/i);
             if (funcMatch) {
                 const funcName = funcMatch[1];
-                symbols.push({
+                const funcSymbol = {
                     name: funcName,
-                    type: 'function',
+                    type: 'function' as const,
                     detail: `Function in ${currentScriptName}`,
                     documentation: this.extractDocumentation(lines, i)
-                });
+                };
+                symbols.push(funcSymbol);
+                functions.push(funcSymbol);
                 continue;
             }
             
@@ -144,12 +165,14 @@ export class PapyrusCompletionProvider implements vscode.CompletionItemProvider 
             const eventMatch = line.match(/^\s*Event\s+(\w+)\s*\(/i);
             if (eventMatch) {
                 const eventName = eventMatch[1];
-                symbols.push({
+                const eventSymbol = {
                     name: eventName,
-                    type: 'event',
+                    type: 'event' as const,
                     detail: `Event in ${currentScriptName}`,
                     documentation: this.extractDocumentation(lines, i)
-                });
+                };
+                symbols.push(eventSymbol);
+                events.push(eventSymbol);
                 continue;
             }
             
@@ -158,16 +181,27 @@ export class PapyrusCompletionProvider implements vscode.CompletionItemProvider 
             if (propMatch) {
                 const propName = propMatch[2];
                 const propType = propMatch[1];
-                symbols.push({
+                const propSymbol = {
                     name: propName,
-                    type: 'property',
+                    type: 'property' as const,
                     detail: `${propType} Property in ${currentScriptName}`,
                     documentation: this.extractDocumentation(lines, i)
-                });
+                };
+                symbols.push(propSymbol);
+                properties.push(propSymbol);
             }
         }
         
-        return symbols;
+        // Build script info if we found a script declaration
+        const scriptInfo: ScriptInfo | undefined = currentScriptName ? {
+            name: currentScriptName,
+            extends: extendsName,
+            functions,
+            events,
+            properties
+        } : undefined;
+        
+        return { symbols, scriptInfo };
     }
 
     private extractDocumentation(lines: string[], lineIndex: number): string {
@@ -221,9 +255,32 @@ export class PapyrusCompletionProvider implements vscode.CompletionItemProvider 
                 completions.push(item);
             }
         } else {
-            // General completion - provide all symbols
+            // General completion - provide symbols from current file's inheritance chain
             const seen = new Set<string>();
+            const currentFileExtends = this.getCurrentFileExtends(document);
             
+            // If we know what the current file extends, include those methods
+            if (currentFileExtends) {
+                const inheritedMethods = this.findMethodsForClass(currentFileExtends);
+                for (const method of inheritedMethods) {
+                    if (seen.has(method.name)) {
+                        continue;
+                    }
+                    seen.add(method.name);
+                    
+                    const item = new vscode.CompletionItem(
+                        method.name,
+                        method.type === 'function' ? vscode.CompletionItemKind.Method : 
+                        method.type === 'event' ? vscode.CompletionItemKind.Event : 
+                        vscode.CompletionItemKind.Property
+                    );
+                    item.detail = method.detail + ' (inherited)';
+                    item.documentation = method.documentation;
+                    completions.push(item);
+                }
+            }
+            
+            // Add all other symbols
             for (const [, fileSymbols] of this.symbols) {
                 for (const symbol of fileSymbols) {
                     if (seen.has(symbol.name)) {
@@ -260,20 +317,32 @@ export class PapyrusCompletionProvider implements vscode.CompletionItemProvider 
         return completions;
     }
 
+    private getCurrentFileExtends(document: vscode.TextDocument): string | undefined {
+        const content = document.getText();
+        const scriptMatch = content.match(/^\s*ScriptName\s+\w+(?:\s+extends\s+(\w+))?/im);
+        return scriptMatch?.[1];
+    }
+
     private findMethodsForClass(className: string): PapyrusSymbol[] {
         const methods: PapyrusSymbol[] = [];
+        const visited = new Set<string>();
+        let currentClass = className.toLowerCase();
         
-        // Find the script file for this class
-        for (const [, fileSymbols] of this.symbols) {
-            const scriptSymbol = fileSymbols.find(s => 
-                s.type === 'script' && s.name.toLowerCase() === className.toLowerCase()
-            );
+        // Walk up the inheritance chain
+        while (currentClass && !visited.has(currentClass)) {
+            visited.add(currentClass);
+            const scriptInfo = this.scripts.get(currentClass);
             
-            if (scriptSymbol) {
-                // Found the script, return all its functions and events
-                return fileSymbols.filter(s => 
-                    s.type === 'function' || s.type === 'event' || s.type === 'property'
-                );
+            if (scriptInfo) {
+                // Add all methods from this class
+                methods.push(...scriptInfo.functions);
+                methods.push(...scriptInfo.events);
+                methods.push(...scriptInfo.properties);
+                
+                // Move to parent class
+                currentClass = scriptInfo.extends?.toLowerCase() || '';
+            } else {
+                break;
             }
         }
         
