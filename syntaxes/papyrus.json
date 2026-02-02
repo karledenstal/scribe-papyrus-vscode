@@ -57,12 +57,15 @@
             ]
         },
         {
-            "begin": "(?i)(property)\\s+(\\S+)",
+            "begin": "(?i)^\\s*(\\w+)\\s+(Property)\\s+(\\w+)",
             "beginCaptures": {
                 "1": {
-                    "name": "keyword.other.property.papyrus"
+                    "name": "storage.type.papyrus"
                 },
                 "2": {
+                    "name": "keyword.other.property.papyrus"
+                },
+                "3": {
                     "name": "variable.other.property.papyrus"
                 }
             },
@@ -88,6 +91,18 @@
                     "name": "keyword.operator.assignment.papyrus"
                 }
             ]
+        },
+        {
+            "match": "(?i)^\\s*(import)\\s+(\\w+)",
+            "captures": {
+                "1": {
+                    "name": "keyword.control.import.papyrus"
+                },
+                "2": {
+                    "name": "support.class.papyrus"
+                }
+            },
+            "name": "meta.import.papyrus"
         },
         {
             "begin": "(?i)\\b(function|event)\\s+([^\\(]*)\\(",

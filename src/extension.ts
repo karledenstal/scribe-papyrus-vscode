@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { PapyrusTaskProvider } from './taskProvider';
 import { loadProjectConfig, resolvePath } from './config';
+import { PapyrusCompletionProvider } from './completionProvider';
 
 let taskProvider: vscode.Disposable | undefined;
 
@@ -10,6 +11,25 @@ export function activate(context: vscode.ExtensionContext) {
     const extensionPath = context.extensionPath;
     
     if (workspaceRoot) {
+        // Setup completion provider
+        const completionProvider = new PapyrusCompletionProvider();
+        const config = loadProjectConfig(workspaceRoot);
+        if (config) {
+            completionProvider.setConfig(config);
+        }
+        
+        const completionDisposable = vscode.languages.registerCompletionItemProvider(
+            { language: 'papyrus', scheme: 'file' },
+            completionProvider,
+            '.', // Trigger on dot for method calls
+            '('  // Trigger on parenthesis
+        );
+        
+        // Watch for file changes to refresh completions
+        const fileWatcher = vscode.workspace.createFileSystemWatcher('**/*.psc');
+        fileWatcher.onDidChange(uri => completionProvider.refreshFile(uri.fsPath));
+        fileWatcher.onDidCreate(uri => completionProvider.refreshFile(uri.fsPath));
+        
         taskProvider = vscode.tasks.registerTaskProvider(
             PapyrusTaskProvider.taskType,
             new PapyrusTaskProvider(workspaceRoot, extensionPath)
@@ -102,7 +122,9 @@ export function activate(context: vscode.ExtensionContext) {
             compileCommand,
             compileNoCacheCommand,
             checkCommand,
-            compileCurrentCommand
+            compileCurrentCommand,
+            completionDisposable,
+            fileWatcher
         );
     }
 }
