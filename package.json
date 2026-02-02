@@ -105,6 +105,13 @@
         "extensions": [".psc"],
         "configuration": "./language-configuration.json"
       }
+    ],
+    "grammars": [
+      {
+        "language": "papyrus",
+        "scopeName": "source.papyrus",
+        "path": "./syntaxes/papyrus.json"
+      }
     ]
   },
   "scripts": {

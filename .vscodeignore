@@ -15,3 +15,5 @@ vsc-extension-quickstart.md
 !bin/**
 !bin/papyrus
 !bin/LICENSE
+!syntaxes/**
+!syntaxes/papyrus.json

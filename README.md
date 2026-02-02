@@ -7,8 +7,10 @@ A VSCode extension for compiling Papyrus scripts for Skyrim modding.
 - 🔧 **Compile Papyrus Scripts** - Compile all .psc files in your project
 - 🎯 **Compile Current File** - Compile just the file you're working on
 - ✅ **Syntax Checking** - Validate your scripts without generating .pex files
+- 🎨 **Syntax Highlighting** - Full color coding for Papyrus keywords, types, functions, and more
+- 📝 **Code Folding** - Collapse/expand functions, properties, states, and groups
 - 📦 **Dependency Management** - Configure SKSE, PapyrusUtil, and other dependencies in YAML
-- 🎨 **Right-click Integration** - Access compile commands directly from the editor
+- 🖱️ **Right-click Integration** - Access compile commands directly from the editor
 
 ## Installation
 
